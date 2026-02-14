@@ -3,6 +3,7 @@ from pygame.locals import *
 import random
 import math
 from Banana import Banana
+from fruit import fruit
 
 # Initialisation de pygame
 pygame.init()
@@ -64,6 +65,11 @@ for i in range(num_bananas):
     banana = Banana("Pic/banana_transparent.png", WIDTH, HEIGHT)
     bananas.append(banana)
 
+# Devil Fruit (rare fruit that activates aura)
+devil_fruit = None
+devil_fruit_spawn_chance = 0.001  # Very low chance per frame (~1 every 16 seconds at 60 FPS)
+devil_fruit_active = False
+
 # Police pour afficher le score
 font = pygame.font.Font(None, 36)
 pause_font = pygame.font.Font(None, 72)
@@ -76,7 +82,7 @@ Gear3_sound = pygame.mixer.Sound("Sounds/gear-third.mp3")
 Gear4_sound = pygame.mixer.Sound("Sounds/gear-fourth.mp3")
 gameover_sound = pygame.mixer.Sound("Sounds/gameover_laugh.mp3")
 gameover_sound2 = pygame.mixer.Sound("Sounds/gameover_laugh2.mp3")
-aura_sound = pygame.mixer.Sound("Sounds/Aura.mp3")
+
 # Track if bird should be active
 bird_active = False
 
@@ -147,13 +153,30 @@ while continuer:
 
         # Update aura pulse animation
         if aura_active:
-            aura_sound.play()
             aura_pulse += 0.1
             aura_timer += 1
             # Deactivate aura after 5 seconds
             if aura_timer >= aura_duration:
                 aura_active = False
                 aura_timer = 0
+
+        # Devil Fruit spawn logic (rare)
+        if not devil_fruit_active and random.random() < devil_fruit_spawn_chance:
+            devil_fruit = fruit("Pic/Devil_fruit.png", WIDTH, HEIGHT)
+            devil_fruit_active = True
+
+        # Update Devil Fruit
+        if devil_fruit_active and devil_fruit:
+            devil_fruit.deplace()
+
+            # Check collision with hero
+            if devil_fruit.collision(persoRect):
+                # Activate aura
+                aura_active = True
+                aura_timer = 0
+                # Remove devil fruit
+                devil_fruit_active = False
+                devil_fruit = None
 
         # Mise à jour des bananes
         for banana in bananas:
@@ -195,7 +218,7 @@ while continuer:
                     Gear4_sound.play()
 
                 # Activate aura at every 100 points (100, 200, 300, etc.)
-                if score % 10 == 0 and score > 0:
+                if score % 100 == 0 and score > 0:
                     aura_active = True
                     aura_timer = 0
 
@@ -211,8 +234,9 @@ while continuer:
                 print("Game Over! (Lion)")
                 print(f"Score final: {score}")
                 game_over = True
-                pygame.mixer.music.stop()
-                gameover_sound2.play()
+                pygame.mixer.music.stop()  # Stop background music
+                pygame.mixer.stop()  # Stop all other sounds
+                gameover_sound2.play()  # Play only death sound
         # Collision avec le bird (if active)
         if bird_active:
             enemy1CollisionRect = enemy1Rect.inflate(-30, -30)
@@ -225,8 +249,9 @@ while continuer:
                     print("Game Over! (Bird)")
                     print(f"Score final: {score}")
                     game_over = True
-                    pygame.mixer.music.stop()
-                    gameover_sound.play()
+                    pygame.mixer.music.stop()  # Stop background music
+                    pygame.mixer.stop()  # Stop all other sounds
+                    gameover_sound.play()  # Play only death sound
 
     # Affichage
     if game_over:
@@ -279,6 +304,10 @@ while continuer:
         # Afficher les bananes
         for banana in bananas:
             banana.affiche(fenetre)
+
+        # Afficher Devil Fruit if active
+        if devil_fruit_active and devil_fruit:
+            devil_fruit.affiche(fenetre)
 
         # Afficher le score
         score_text = font.render(f"Score: {score}", True, (255, 255, 0))

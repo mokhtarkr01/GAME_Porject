@@ -8,7 +8,7 @@ from fruit import fruit
 # Initialisation de pygame
 pygame.init()
 pygame.mixer.init()
-##"
+
 # Charger la musique
 pygame.mixer.music.load("Sounds/African Safari Music.mp3")
 pygame.mixer.music.play(-1)  # boucle infinie
@@ -17,7 +17,7 @@ pygame.mixer.music.play(-1)  # boucle infinie
 WIDTH = 640
 HEIGHT = 480
 fenetre = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("###")
+pygame.display.set_caption("Monkey D Rush ")
 
 # Horloge pour contrôler le FPS
 clock = pygame.time.Clock()
@@ -32,7 +32,7 @@ enemy1 = pygame.image.load("Pic/Bird.png").convert_alpha()
 
 # Redimensionnement
 perso = pygame.transform.scale(perso, (100, 100))
-enemy = pygame.transform.scale(enemy, (100, 100))
+enemy = pygame.transform.scale(enemy, (180, 100))
 enemy1 = pygame.transform.scale(enemy1, (100, 100))
 
 # Rectangles
@@ -67,7 +67,7 @@ for i in range(num_bananas):
 
 # Devil Fruit (rare fruit that activates aura)
 devil_fruit = None
-devil_fruit_spawn_chance = 0.001  # Very low chance per frame (~1 every 16 seconds at 60 FPS)
+devil_fruit_spawn_chance = 0.0001  # Very low chance per frame
 devil_fruit_active = False
 
 # Police pour afficher le score
@@ -199,6 +199,9 @@ while continuer:
                     perso = pygame.image.load("Pic/Hero_gear2.png").convert_alpha()
                     fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
                     perso = pygame.transform.scale(perso, (100, 100))
+                    enemy = pygame.image.load("Pic/Hippo_gear.png").convert_alpha()
+                    perso = pygame.transform.scale(perso, (100, 100))
+                    enemy = pygame.transform.scale(enemy, (160, 100))
                     Gear2_sound.play()
                     bird_active = True  # Activate the bird!
 
@@ -208,14 +211,19 @@ while continuer:
                     perso = pygame.image.load("Pic/Hero_gear3.png").convert_alpha()
                     fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
                     perso = pygame.transform.scale(perso, (100, 100))
+                    enemy = pygame.image.load("Pic/Bearr_gear.png").convert_alpha()
+                    perso = pygame.transform.scale(perso, (100, 100))
+                    enemy = pygame.transform.scale(enemy, (180, 100))
                     Gear3_sound.play()
 
                 # Gear 4
                 if score == 35:
                     fond = pygame.image.load("Pic/back_gear4.jpg").convert()
                     perso = pygame.image.load("Pic/Hero_gear4.png").convert_alpha()
+                    enemy = pygame.image.load("Pic/Gorilla_gear.png").convert_alpha()
                     fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
                     perso = pygame.transform.scale(perso, (100, 100))
+                    enemy = pygame.transform.scale(enemy, (190, 100))
                     Gear4_sound.play()
 
                 # Activate aura at every 100 points (100, 200, 300, etc.)
@@ -238,6 +246,7 @@ while continuer:
                 pygame.mixer.music.stop()  # Stop background music
                 pygame.mixer.stop()  # Stop all other sounds
                 gameover_sound2.play()  # Play only death sound
+
         # Collision avec le bird (if active)
         if bird_active:
             enemy1CollisionRect = enemy1Rect.inflate(-30, -30)
@@ -256,7 +265,6 @@ while continuer:
 
     # Affichage
     if game_over:
-
         # Black screen for Game Over
         fenetre.fill((0, 0, 0))
 
@@ -311,7 +319,6 @@ while continuer:
             devil_fruit.affiche(fenetre)
             if devil_fruit.collision(persoRect):
                 aura_sound.play()
-
 
         # Afficher le score
         score_text = font.render(f"Score: {score}", True, (255, 255, 0))

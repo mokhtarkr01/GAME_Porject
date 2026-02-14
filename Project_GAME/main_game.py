@@ -82,6 +82,7 @@ Gear3_sound = pygame.mixer.Sound("Sounds/gear-third.mp3")
 Gear4_sound = pygame.mixer.Sound("Sounds/gear-fourth.mp3")
 gameover_sound = pygame.mixer.Sound("Sounds/gameover_laugh.mp3")
 gameover_sound2 = pygame.mixer.Sound("Sounds/gameover_laugh2.mp3")
+aura_sound = pygame.mixer.Sound("Sounds/Aura.mp3")
 
 # Track if bird should be active
 bird_active = False
@@ -277,7 +278,7 @@ while continuer:
         if aura_active:
             # Create pulsing effect
             pulse_offset = math.sin(aura_pulse) * 10
-
+            aura_sound.play()
             # Draw multiple layers for glow effect
             for i in range(3, 0, -1):
                 radius = 60 + pulse_offset + (i * 10)
@@ -308,6 +309,9 @@ while continuer:
         # Afficher Devil Fruit if active
         if devil_fruit_active and devil_fruit:
             devil_fruit.affiche(fenetre)
+            if devil_fruit.collision(persoRect):
+                aura_sound.play()
+
 
         # Afficher le score
         score_text = font.render(f"Score: {score}", True, (255, 255, 0))

@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import *
 import random
+import math
 from Banana import Banana
 
 # Initialisation de pygame
@@ -74,7 +75,8 @@ Gear2_sound = pygame.mixer.Sound("Sounds/gear-second.mp3")
 Gear3_sound = pygame.mixer.Sound("Sounds/gear-third.mp3")
 Gear4_sound = pygame.mixer.Sound("Sounds/gear-fourth.mp3")
 gameover_sound = pygame.mixer.Sound("Sounds/gameover_laugh.mp3")
-
+gameover_sound2 = pygame.mixer.Sound("Sounds/gameover_laugh2.mp3")
+aura_sound = pygame.mixer.Sound("Sounds/Aura.mp3")
 # Track if bird should be active
 bird_active = False
 
@@ -83,6 +85,12 @@ paused = False
 
 # Game Over variable
 game_over = False
+
+# Aura variables
+aura_active = False
+aura_pulse = 0
+aura_timer = 0
+aura_duration = 300  # 5 seconds at 60 FPS (5 * 60 = 300 frames)
 
 # Boucle principale
 continuer = True
@@ -137,6 +145,16 @@ while continuer:
                 enemy1Rect.x = WIDTH + random.randint(50, 300)
                 enemy1_speed = random.randint(2, 4)
 
+        # Update aura pulse animation
+        if aura_active:
+            aura_sound.play()
+            aura_pulse += 0.1
+            aura_timer += 1
+            # Deactivate aura after 5 seconds
+            if aura_timer >= aura_duration:
+                aura_active = False
+                aura_timer = 0
+
         # Mise à jour des bananes
         for banana in bananas:
             banana.deplace()
@@ -176,25 +194,39 @@ while continuer:
                     perso = pygame.transform.scale(perso, (100, 100))
                     Gear4_sound.play()
 
+                # Activate aura at every 100 points (100, 200, 300, etc.)
+                if score % 10 == 0 and score > 0:
+                    aura_active = True
+                    aura_timer = 0
+
         # Collision avec le lion
         persoCollisionRect = persoRect.inflate(-30, -30)
         enemyCollisionRect = enemyRect.inflate(-30, -30)
         if persoCollisionRect.colliderect(enemyCollisionRect):
-            print("Game Over! (Lion)")
-            print(f"Score final: {score}")
-            game_over = True
-            pygame.mixer.music.stop()
-            gameover_sound.play()
+            if aura_active:
+                # Kill the lion - reset its position
+                enemyRect.x = WIDTH + random.randint(50, 300)
+                enemy_speed = random.randint(2, 6)
+            else:
+                print("Game Over! (Lion)")
+                print(f"Score final: {score}")
+                game_over = True
+                pygame.mixer.music.stop()
+                gameover_sound2.play()
         # Collision avec le bird (if active)
         if bird_active:
             enemy1CollisionRect = enemy1Rect.inflate(-30, -30)
             if persoCollisionRect.colliderect(enemy1CollisionRect):
-                print("Game Over! (Bird)")
-                print(f"Score final: {score}")
-                game_over = True
-                pygame.mixer.music.stop()
-                gameover_sound.play()
-
+                if aura_active:
+                    # Kill the bird - reset its position
+                    enemy1Rect.x = WIDTH + random.randint(50, 300)
+                    enemy1_speed = random.randint(2, 4)
+                else:
+                    print("Game Over! (Bird)")
+                    print(f"Score final: {score}")
+                    game_over = True
+                    pygame.mixer.music.stop()
+                    gameover_sound.play()
 
     # Affichage
     if game_over:
@@ -215,6 +247,28 @@ while continuer:
     else:
         # Normal game display
         fenetre.blit(fond, (0, 0))
+
+        # Draw glowing aura if active (before drawing the hero)
+        if aura_active:
+            # Create pulsing effect
+            pulse_offset = math.sin(aura_pulse) * 10
+
+            # Draw multiple layers for glow effect
+            for i in range(3, 0, -1):
+                radius = 60 + pulse_offset + (i * 10)
+                alpha = 80 - (i * 20)
+
+                # Create surface for the glow
+                glow_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+
+                # Draw glow with golden/yellow color
+                color = (255, 215, 0, alpha)  # Golden color with transparency
+                pygame.draw.circle(glow_surface, color, (radius, radius), int(radius))
+
+                # Position the glow centered on the hero
+                glow_pos = (persoRect.centerx - radius, persoRect.centery - radius)
+                fenetre.blit(glow_surface, glow_pos)
+
         fenetre.blit(perso, persoRect)
         fenetre.blit(enemy, enemyRect)
 

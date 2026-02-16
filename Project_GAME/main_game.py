@@ -123,7 +123,7 @@ game_over = False
 aura_active = False
 aura_pulse = 0
 aura_timer = 0
-aura_duration = 300  # 5 seconds at 60 FPS (5 * 60 = 300 frames)
+aura_duration = 180  # 3 seconds at 60 FPS (3 * 60 = 180 frames)
 
 
 # Particle System
@@ -165,26 +165,6 @@ gear_transition_alpha = 0
 gear_transition_timer = 0
 
 
-# Hero Trail Effect
-class TrailSegment:
-    def __init__(self, x, y, image):
-        self.x = x
-        self.y = y
-        self.image = image.copy()
-        self.alpha = 150
-
-    def update(self):
-        self.alpha -= 15
-
-    def draw(self, surface):
-        if self.alpha > 0:
-            self.image.set_alpha(self.alpha)
-            surface.blit(self.image, (self.x, self.y))
-
-
-trail_segments = []
-trail_timer = 0
-
 # Game States
 MENU = 0
 PLAYING = 1
@@ -203,7 +183,7 @@ def reset_game():
     global particles
     global screen_shake, shake_offset_x, shake_offset_y
     global gear_transition, gear_transition_alpha, gear_transition_timer
-    global trail_segments, trail_timer, game_state
+    global game_state
     global persoRect, enemyRect, enemy1Rect, enemy_speed, enemy1_speed
     global is_jumping, y_velocity, perso, enemy, enemy1, fond
 
@@ -234,14 +214,12 @@ def reset_game():
 
     # Reset particles and effects
     particles.clear()
-    trail_segments.clear()
     screen_shake = 0
     shake_offset_x = 0
     shake_offset_y = 0
     gear_transition = False
     gear_transition_alpha = 0
     gear_transition_timer = 0
-    trail_timer = 0
 
     # Reset bananas
     bananas.clear()
@@ -398,18 +376,6 @@ while continuer:
     elif game_state == PLAYING:
         # Skip game logic if paused
         if not paused:
-            # Update trail effect
-            trail_timer += 1
-            if trail_timer >= 3:  # Add trail segment every 3 frames
-                trail_segments.append(TrailSegment(persoRect.x, persoRect.y, perso))
-                trail_timer = 0
-
-            # Update and remove old trail segments
-            for segment in trail_segments[:]:
-                segment.update()
-                if segment.alpha <= 0:
-                    trail_segments.remove(segment)
-
             # Update particles
             for particle in particles[:]:
                 particle.update()
@@ -444,8 +410,8 @@ while continuer:
             if keys[K_RIGHT] and persoRect.right < WIDTH:
                 persoRect.x += 5
 
-        # Mise à jour du saut
-        if is_jumping:
+        # Mise à jour du saut (only if not paused)
+        if is_jumping and not paused:
             persoRect.y += y_velocity
             y_velocity += gravity
             if persoRect.bottom >= HEIGHT:
@@ -453,21 +419,22 @@ while continuer:
                 is_jumping = False
                 y_velocity = 0
 
-        # Déplacement de l'ennemi (lion)
-        enemyRect.x -= enemy_speed
-        if enemyRect.right < 0:
-            enemyRect.x = WIDTH + random.randint(50, 300)
-            enemy_speed = random.randint(2, 6)
+        # Déplacement de l'ennemi (lion) - only if not paused
+        if not paused:
+            enemyRect.x -= enemy_speed
+            if enemyRect.right < 0:
+                enemyRect.x = WIDTH + random.randint(50, 300)
+                enemy_speed = random.randint(2, 6)
 
-        # Déplacement du bird (enemy1) - only if active
-        if bird_active:
+        # Déplacement du bird (enemy1) - only if active and not paused
+        if bird_active and not paused:
             enemy1Rect.x -= enemy1_speed
             if enemy1Rect.right < 0:
                 enemy1Rect.x = WIDTH + random.randint(50, 300)
                 enemy1_speed = random.randint(2, 4)
 
-        # Update aura pulse animation
-        if aura_active:
+        # Update aura pulse animation (only if not paused)
+        if aura_active and not paused:
             aura_pulse += 0.1
             aura_timer += 1
             # Deactivate aura after 5 seconds
@@ -475,13 +442,13 @@ while continuer:
                 aura_active = False
                 aura_timer = 0
 
-        # Devil Fruit spawn logic (rare)
-        if not devil_fruit_active and random.random() < devil_fruit_spawn_chance:
+        # Devil Fruit spawn logic (rare) - only if not paused
+        if not devil_fruit_active and random.random() < devil_fruit_spawn_chance and not paused:
             devil_fruit = fruit("Pic/Devil_fruit.png", WIDTH, HEIGHT)
             devil_fruit_active = True
 
-        # Update Devil Fruit
-        if devil_fruit_active and devil_fruit:
+        # Update Devil Fruit (only if not paused)
+        if devil_fruit_active and devil_fruit and not paused:
             devil_fruit.deplace()
 
             # Check collision with hero
@@ -493,123 +460,101 @@ while continuer:
                 devil_fruit_active = False
                 devil_fruit = None
 
-        # Mise à jour des bananes
-        for banana in bananas:
-            banana.deplace()
+        # Mise à jour des bananes (only if not paused)
+        if not paused:
+            for banana in bananas:
+                banana.deplace()
 
-            # Vérifier collision avec le héros
-            if banana.collision(persoRect):
-                old_score = score
-                score += 1
-                banana.reset_position()
+                # Vérifier collision avec le héros
+                if banana.collision(persoRect):
+                    old_score = score
+                    score += 1
+                    banana.reset_position()
 
-                # Create particle explosion
-                for _ in range(20):
-                    particles.append(Particle(
-                        banana.rect.centerx,
-                        banana.rect.centery,
-                        (255, 255, 0)  # Yellow particles
-                    ))
+                    # Create particle explosion
+                    for _ in range(20):
+                        particles.append(Particle(
+                            banana.rect.centerx,
+                            banana.rect.centery,
+                            (255, 255, 0)  # Yellow particles
+                        ))
 
-                # Check if we just crossed a milestone
-                if score % 10 == 0 and old_score % 10 != 0:
-                    mabrouk_sound.play()
+                    # Check if we just crossed a milestone
+                    if score % 10 == 0 and old_score % 10 != 0:
+                        mabrouk_sound.play()
 
-                # Gear 2
-                if score == 15:
-                    fond = pygame.image.load("Pic/back_gear2.jpg").convert()
-                    perso = pygame.image.load("Pic/Hero_gear2.png").convert_alpha()
-                    fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
-                    perso = pygame.transform.scale(perso, (100, 100))
-                    enemy = pygame.image.load("Pic/Hippo_gear.png").convert_alpha()
-                    perso = pygame.transform.scale(perso, (100, 100))
-                    enemy = pygame.transform.scale(enemy, (160, 100))
-                    Gear2_sound.play()
-                    bird_active = True  # Activate the bird!
-                    screen_shake = 15  # Strong shake
-                    gear_transition = True
-                    gear_transition_alpha = 0
-                    gear_transition_timer = 0
+                    # Gear 2
+                    if score == 15:
+                        fond = pygame.image.load("Pic/back_gear2.jpg").convert()
+                        perso = pygame.image.load("Pic/Hero_gear2.png").convert_alpha()
+                        fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
+                        perso = pygame.transform.scale(perso, (100, 100))
+                        enemy = pygame.image.load("Pic/Hippo_gear.png").convert_alpha()
+                        perso = pygame.transform.scale(perso, (100, 100))
+                        enemy = pygame.transform.scale(enemy, (160, 100))
+                        pygame.mixer.stop()
+                        Gear2_sound.play()
+                        bird_active = True  # Activate the bird!
+                        screen_shake = 15  # Strong shake
+                        gear_transition = True
+                        gear_transition_alpha = 0
+                        gear_transition_timer = 0
 
-                # Gear 3
-                if score == 25:
-                    fond = pygame.image.load("Pic/back_gear3.jpg").convert()
-                    perso = pygame.image.load("Pic/Hero_gear3.png").convert_alpha()
-                    fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
-                    perso = pygame.transform.scale(perso, (100, 100))
-                    enemy = pygame.image.load("Pic/Bearr_gear.png").convert_alpha()
-                    perso = pygame.transform.scale(perso, (100, 100))
-                    enemy = pygame.transform.scale(enemy, (180, 100))
-                    Gear3_sound.play()
-                    screen_shake = 15
-                    gear_transition = True
-                    gear_transition_alpha = 0
-                    gear_transition_timer = 0
+                    # Gear 3
+                    if score == 25:
+                        fond = pygame.image.load("Pic/back_gear3.jpg").convert()
+                        perso = pygame.image.load("Pic/Hero_gear3.png").convert_alpha()
+                        fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
+                        perso = pygame.transform.scale(perso, (100, 100))
+                        enemy = pygame.image.load("Pic/Bearr_gear.png").convert_alpha()
+                        perso = pygame.transform.scale(perso, (100, 100))
+                        enemy = pygame.transform.scale(enemy, (180, 100))
+                        pygame.mixer.stop()
+                        Gear3_sound.play()
+                        screen_shake = 15
+                        gear_transition = True
+                        gear_transition_alpha = 0
+                        gear_transition_timer = 0
 
-                # Gear 4
-                if score == 35:
-                    fond = pygame.image.load("Pic/back_gear4.jpg").convert()
-                    perso = pygame.image.load("Pic/Hero_gear4.png").convert_alpha()
-                    enemy = pygame.image.load("Pic/Gorilla_gear.png").convert_alpha()
-                    fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
-                    perso = pygame.transform.scale(perso, (100, 100))
-                    enemy = pygame.transform.scale(enemy, (190, 100))
-                    Gear4_sound.play()
-                    screen_shake = 20  # Strongest shake
-                    gear_transition = True
-                    gear_transition_alpha = 0
-                    gear_transition_timer = 0
+                    # Gear 4
+                    if score == 35:
+                        fond = pygame.image.load("Pic/back_gear4.jpg").convert()
+                        perso = pygame.image.load("Pic/Hero_gear4.png").convert_alpha()
+                        enemy = pygame.image.load("Pic/Gorilla_gear.png").convert_alpha()
+                        fond = pygame.transform.scale(fond, (WIDTH, HEIGHT))
+                        perso = pygame.transform.scale(perso, (100, 100))
+                        enemy = pygame.transform.scale(enemy, (190, 100))
+                        pygame.mixer.stop()
+                        Gear4_sound.play()
+                        screen_shake = 20  # Strongest shake
+                        gear_transition = True
+                        gear_transition_alpha = 0
+                        gear_transition_timer = 0
 
-                # Activate aura at every 100 points (100, 200, 300, etc.)
-                if score % 100 == 0 and score > 0:
-                    aura_active = True
-                    aura_timer = 0
+                    # Activate aura at every 100 points (100, 200, 300, etc.)
+                    if score % 100 == 0 and score > 0:
+                        aura_active = True
+                        aura_timer = 0
 
-        # Collision avec le lion
-        persoCollisionRect = persoRect.inflate(-30, -30)
-        enemyCollisionRect = enemyRect.inflate(-30, -30)
-        if persoCollisionRect.colliderect(enemyCollisionRect):
-            if aura_active:
-                # Kill the lion - reset its position
-                enemyRect.x = WIDTH + random.randint(50, 300)
-                enemy_speed = random.randint(2, 6)
-                # Create explosion particles
-                for _ in range(30):
-                    particles.append(Particle(
-                        enemyRect.centerx,
-                        enemyRect.centery,
-                        (255, 100, 0)  # Orange/red particles
-                    ))
-                screen_shake = 10
-            else:
-                print("Game Over! (Lion)")
-                print(f"Score final: {score}")
-                game_state = GAME_OVER
-                if score > high_score:
-                    high_score = score
-                    save_high_score(high_score)
-                pygame.mixer.music.stop()  # Stop background music
-                pygame.mixer.stop()  # Stop all other sounds
-                gameover_sound2.play()  # Play only death sound
-
-        # Collision avec le bird (if active)
-        if bird_active:
-            enemy1CollisionRect = enemy1Rect.inflate(-30, -30)
-            if persoCollisionRect.colliderect(enemy1CollisionRect):
+        # Collision avec le lion (only check if not paused)
+        if not paused:
+            persoCollisionRect = persoRect.inflate(-30, -30)
+            enemyCollisionRect = enemyRect.inflate(-30, -30)
+            if persoCollisionRect.colliderect(enemyCollisionRect):
                 if aura_active:
-                    # Kill the bird - reset its position
-                    enemy1Rect.x = WIDTH + random.randint(50, 300)
-                    enemy1_speed = random.randint(2, 4)
+                    # Kill the lion - reset its position
+                    enemyRect.x = WIDTH + random.randint(50, 300)
+                    enemy_speed = random.randint(2, 6)
                     # Create explosion particles
                     for _ in range(30):
                         particles.append(Particle(
-                            enemy1Rect.centerx,
-                            enemy1Rect.centery,
+                            enemyRect.centerx,
+                            enemyRect.centery,
                             (255, 100, 0)  # Orange/red particles
                         ))
                     screen_shake = 10
                 else:
-                    print("Game Over! (Bird)")
+                    print("Game Over! (Lion)")
                     print(f"Score final: {score}")
                     game_state = GAME_OVER
                     if score > high_score:
@@ -617,15 +562,38 @@ while continuer:
                         save_high_score(high_score)
                     pygame.mixer.music.stop()  # Stop background music
                     pygame.mixer.stop()  # Stop all other sounds
-                    gameover_sound.play()  # Play only death sound
+                    gameover_sound2.play()  # Play only death sound
+
+            # Collision avec le bird (if active and not paused)
+            if bird_active:
+                enemy1CollisionRect = enemy1Rect.inflate(-30, -30)
+                if persoCollisionRect.colliderect(enemy1CollisionRect):
+                    if aura_active:
+                        # Kill the bird - reset its position
+                        enemy1Rect.x = WIDTH + random.randint(50, 300)
+                        enemy1_speed = random.randint(2, 4)
+                        # Create explosion particles
+                        for _ in range(30):
+                            particles.append(Particle(
+                                enemy1Rect.centerx,
+                                enemy1Rect.centery,
+                                (255, 100, 0)  # Orange/red particles
+                            ))
+                        screen_shake = 10
+                    else:
+                        print("Game Over! (Bird)")
+                        print(f"Score final: {score}")
+                        game_state = GAME_OVER
+                        if score > high_score:
+                            high_score = score
+                            save_high_score(high_score)
+                        pygame.mixer.music.stop()  # Stop background music
+                        pygame.mixer.stop()  # Stop all other sounds
+                        gameover_sound.play()  # Play only death sound
 
         # Display section for PLAYING state
         # Normal game display
         fenetre.blit(fond, (shake_offset_x, shake_offset_y))
-
-        # Draw trail segments (before hero)
-        for segment in trail_segments:
-            segment.draw(fenetre)
 
         # Draw glowing aura if active (before drawing the hero)
         if aura_active:
